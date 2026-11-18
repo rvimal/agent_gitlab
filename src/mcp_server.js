@@ -1,7 +1,6 @@
-// Expose read-only GitLab operations as MCP tools over stdio.
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+// Expose read-only GitLab operations as MCP tools over stdio using FastMCP.
 import dotenv from "dotenv";
+import { FastMCP } from "fastmcp";
 import { z } from "zod";
 import { GitLabClient, GitLabError } from "./gitlab_client.js";
 
@@ -17,10 +16,10 @@ async function call(method, ...args) {
     console.error(`GitLab tool ${method} failed: ${error.message}`);
     result = { data: null, error: error.message };
   }
-  return { content: [{ type: "text", text: JSON.stringify(result) }] };
+  return JSON.stringify(result);
 }
 
-const server = new McpServer({ name: "GitLab CI/CD Discovery", version: "1.0.0" });
+const server = new FastMCP({ name: "GitLab CI/CD Discovery", version: "1.0.0" });
 const tools = [
   ["get_group", "Fetch group details.", { group_id: z.string() }, ({ group_id }) => [group_id]],
   ["list_subgroups", "List immediate subgroups.", { group_id: z.string() }, ({ group_id }) => [group_id]],
@@ -33,8 +32,13 @@ const tools = [
     { project_id: z.string(), path: z.string(), ref: z.string() },
     ({ project_id, path, ref }) => [project_id, path, ref]],
 ];
-for (const [name, description, inputSchema, toArgs] of tools) {
-  server.registerTool(name, { description, inputSchema }, (args) => call(name, ...toArgs(args)));
+for (const [name, description, shape, toArgs] of tools) {
+  server.addTool({
+    name,
+    description,
+    parameters: z.object(shape),
+    execute: (args) => call(name, ...toArgs(args)),
+  });
 }
 
-await server.connect(new StdioServerTransport());
+server.start({ transportType: "stdio" });

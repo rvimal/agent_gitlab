@@ -1,21 +1,20 @@
 {
   "name": "gitlab-cicd-discovery-agent",
   "version": "1.0.0",
-  "description": "Discover GitLab projects and classify their CI/CD configuration (GitLab CI / Jenkins)",
+  "description": "Read-only GitLab MCP server (FastMCP) for CI/CD discovery",
   "type": "module",
   "private": true,
-  "bin": { "gitlab-discovery": "src/main.js" },
   "scripts": {
-    "start": "node src/main.js",
-    "mcp": "node src/mcp_server.js",
-    "test": "node --test tests/"
+    "start": "node src/mcp_server.js",
+    "mcp": "node src/mcp_server.js"
   },
-  "engines": { "node": ">=20" },
+  "engines": {
+    "node": ">=20"
+  },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.32.2",
+    "axios": "^1.21.1",
     "dotenv": "^18.0.10",
-    "exceljs": "^4.4.0",
-    "yaml": "^2.9.1",
+    "fastmcp": "^4.28.2",
     "zod": "^4.6.7"
   }
 }

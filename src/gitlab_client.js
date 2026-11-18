@@ -1,4 +1,7 @@
 // Read-only GitLab REST API access.
+import { readFileSync } from "node:fs";
+import https from "node:https";
+import axios from "axios";
 
 export class GitLabError extends Error {
   // An API error safe to include in a report.
@@ -15,35 +18,35 @@ const REASONS = {
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export class GitLabClient {
-  constructor(url, token, { timeout = 30000, retries = 3, backoff = 1000 } = {}) {
+  constructor(url, token, { timeout = 30000, retries = 3, backoff = 1000, caCertPath } = {}) {
     if (!url || !token) throw new Error("GITLAB_URL and GITLAB_TOKEN are required");
-    this.baseUrl = `${url.replace(/\/+$/, "")}/api/v4`;
     this.token = token;
-    this.timeout = timeout;
     this.retries = retries;
     this.backoff = backoff;
+    const certPath = caCertPath ?? process.env.GITLAB_CA_CERT;
+    this.http = axios.create({
+      baseURL: `${url.replace(/\/+$/, "")}/api/v4`,
+      headers: { "PRIVATE-TOKEN": token },
+      timeout,
+      validateStatus: () => true,
+      httpsAgent: certPath ? new https.Agent({ ca: readFileSync(certPath) }) : undefined,
+    });
   }
 
-  async #fetch(path, params) {
-    const url = new URL(this.baseUrl + path);
-    for (const [key, value] of Object.entries(params ?? {})) url.searchParams.set(key, value);
+  async #request(path, params, responseType) {
     for (let attempt = 0; ; attempt++) {
       let response;
       try {
-        response = await fetch(url, {
-          headers: { "PRIVATE-TOKEN": this.token },
-          signal: AbortSignal.timeout(this.timeout),
-        });
+        response = await this.http.get(path.replace(/^\//, ""), { params, responseType });
       } catch (error) {
         if (attempt < this.retries) {
           await sleep(this.backoff * 2 ** attempt);
           continue;
         }
-        throw new GitLabError(`Network error requesting ${path}: ${error.name}`);
+        throw new GitLabError(`Network error requesting ${path}: ${error.code ?? error.name}`);
       }
       if (RETRY_STATUSES.has(response.status) && attempt < this.retries) {
-        const retryAfter = Number(response.headers.get("Retry-After"));
-        await response.arrayBuffer().catch(() => {});
+        const retryAfter = Number(response.headers["retry-after"]);
         await sleep(retryAfter > 0 ? retryAfter * 1000 : this.backoff * 2 ** attempt);
         continue;
       }
@@ -52,17 +55,15 @@ export class GitLabClient {
   }
 
   async _get(path, params, raw = false) {
-    const response = await this.#fetch(path, params);
-    if (!response.ok) {
+    const response = await this.#request(path, params, raw ? "text" : "json");
+    if (response.status < 200 || response.status >= 300) {
       const reason = REASONS[response.status] ?? "GitLab API request failed";
       throw new GitLabError(`${reason} (HTTP ${response.status}) for ${path}`);
     }
-    if (raw) return [await response.text(), response.headers];
-    try {
-      return [await response.json(), response.headers];
-    } catch {
+    if (!raw && (response.data === "" || typeof response.data === "string")) {
       throw new GitLabError(`Invalid JSON response for ${path}`);
     }
+    return [response.data, response.headers];
   }
 
   async _pages(path, params) {
@@ -73,12 +74,12 @@ export class GitLabClient {
       if (!Array.isArray(data)) throw new GitLabError(`Unexpected paginated response for ${path}`);
       result.push(...data);
       // Some GitLab installations omit pagination headers for large result sets.
-      if (!headers.has("X-Next-Page")) {
+      if (!("x-next-page" in headers)) {
         if (data.length < 100) return result;
         page += 1;
         continue;
       }
-      const next = headers.get("X-Next-Page") ?? "";
+      const next = headers["x-next-page"] ?? "";
       if (!next) return result;
       if (!/^\d+$/.test(next) || Number(next) <= page) {
         throw new GitLabError(`Invalid next page for ${path}`);
