@@ -1,7 +1,5 @@
 .env
-.venv/
-__pycache__/
-*.py[cod]
+node_modules/
 results.json
 results.xlsx
 groups.json

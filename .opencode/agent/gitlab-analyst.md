@@ -10,9 +10,9 @@ permission:
   edit: deny
   bash:
     "*": deny
-    "python main.py *": allow
-    "python -m unittest *": allow
-    "python -c *": ask
+    "node src/main.js *": allow
+    "npm test": allow
+    "node -e *": ask
 ---
 You analyse GitLab projects for a set of groups.
 
@@ -21,7 +21,7 @@ The file has a `group_ids` array (integers). A list of objects with `group_id` a
 
 Steps:
 1. Read the JSON file and confirm the group IDs. If it is missing or invalid, tell the user and stop.
-2. Run `python main.py --groups-file <file>`. Needs `GITLAB_URL` and `GITLAB_TOKEN` in `.env`; never print or request the token.
+2. Run `node src/main.js --groups-file <file>`. Needs `GITLAB_URL` and `GITLAB_TOKEN` in `.env`; never print or request the token.
    Exit codes: 0 complete, 1 incomplete (partial/failed), 2 config error.
 3. Read `results.json` (`statistics`, `group_errors`, `projects`) and summarise:
    - groups and projects discovered; counts per classification (GitLab CI, Jenkins, both, UNKNOWN)
