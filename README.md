@@ -2,17 +2,14 @@
 
 Discover projects in GitLab groups and classify their repository CI/CD configuration.
 The CLI communicates over stdio with a read-only GitLab MCP server implemented with
-the **Python MCP SDK's FastMCP**. The npm SDK is for JavaScript, so it is not required
-by this Python application. No AI service or orchestration framework is used.
+the **`@modelcontextprotocol/sdk`** npm package. No AI service or orchestration framework is used.
 
 ## Setup
 
-Requires Python 3.11 or newer and network access to GitLab:
+Requires Node.js 20 or newer and network access to GitLab:
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+npm install
 cp .env.example .env
 ```
 
@@ -23,10 +20,10 @@ the groups, projects and repositories. Existing environment variables take
 precedence over `.env`. Never commit the token.
 
 ```bash
-python main.py --group-ids 123 456 789
+npm start -- --group-ids 123 456 789
 ```
 
-Alternatively pass a JSON file: `python main.py --groups-file groups.json`, where the
+Alternatively pass a JSON file: `npm start -- --groups-file groups.json`, where the
 file has a `group_ids` list (see `groups.example.json`).
 
 ## OpenCode agent
@@ -68,7 +65,7 @@ confirmed files only, so `UNKNOWN` on an incomplete scan is not proof of no CI.
 GitLab hides resources from unauthorized users, which cannot be detected by the
 agent. API requests use timeouts and retry transient errors and rate limits.
 
-The MCP server can also be started independently with `python mcp_server.py` and
+The MCP server can also be started independently with `npm run mcp` and
 exposes `get_group`, `list_subgroups`, `list_group_projects`, `get_project`,
 `list_repository_files`, and `read_file`. It uses stdio transport and reads the
 same environment variables.
@@ -76,5 +73,5 @@ same environment variables.
 ## Tests
 
 ```bash
-python -m unittest discover -s tests -v
+npm test
 ```

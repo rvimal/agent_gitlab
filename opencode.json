@@ -3,7 +3,7 @@
   "mcp": {
     "gitlab": {
       "type": "local",
-      "command": ["python", "mcp_server.py"],
+      "command": ["node", "src/mcp_server.js"],
       "enabled": true
     }
   }
