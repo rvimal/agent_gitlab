@@ -52,10 +52,34 @@ async def run(group_ids):
             return await discover(MCPGitLab(session), group_ids)
 
 
+def load_group_ids(path):
+    data = json.loads(Path(path).read_text(encoding="utf-8"))
+    if isinstance(data, dict):
+        data = data.get("group_ids", data.get("groups"))
+    if not isinstance(data, list) or not data:
+        raise ValueError("expected a non-empty 'group_ids' list")
+    ids = []
+    for item in data:
+        if isinstance(item, dict):
+            item = item.get("group_id", item.get("id"))
+        if isinstance(item, bool) or not isinstance(item, (int, str)) or not str(item).isdigit():
+            raise ValueError(f"invalid group ID: {item!r}")
+        ids.append(int(item))
+    return ids
+
+
 def main():
     parser = argparse.ArgumentParser(description="Discover GitLab CI/CD configuration")
-    parser.add_argument("--group-ids", nargs="+", required=True, type=int, metavar="ID")
+    source = parser.add_mutually_exclusive_group(required=True)
+    source.add_argument("--group-ids", nargs="+", type=int, metavar="ID")
+    source.add_argument("--groups-file", type=Path, metavar="JSON",
+                        help="JSON file with a group_ids list (or a list of objects with group_id)")
     args = parser.parse_args()
+    if args.groups_file:
+        try:
+            args.group_ids = load_group_ids(args.groups_file)
+        except (OSError, ValueError) as exc:
+            parser.error(f"invalid groups file: {exc}")
     if any(group_id <= 0 for group_id in args.group_ids):
         parser.error("group IDs must be positive integers")
     logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")

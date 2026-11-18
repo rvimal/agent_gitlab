@@ -26,6 +26,16 @@ precedence over `.env`. Never commit the token.
 python main.py --group-ids 123 456 789
 ```
 
+Alternatively pass a JSON file: `python main.py --groups-file groups.json`, where the
+file has a `group_ids` list (see `groups.example.json`).
+
+## OpenCode agent
+
+`.opencode/agent/gitlab-analyst.md` defines an [OpenCode](https://opencode.ai) agent
+(`opencode.json` also registers the GitLab MCP server). Copy `groups.example.json` to
+`groups.json`, run `opencode` in this directory, select the `gitlab-analyst` agent
+(Tab) and ask: "Analyse groups in groups.json".
+
 The command writes `results.json` and `results.xlsx` in the current directory,
 overwriting existing files. JSON contains `statistics`, `group_errors`, and
 `projects`. Excel contains Projects, Statistics, and Group Errors sheets.
