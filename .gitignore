@@ -4,3 +4,4 @@ __pycache__/
 *.py[cod]
 results.json
 results.xlsx
+groups.json
